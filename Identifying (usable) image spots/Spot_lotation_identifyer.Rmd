@@ -1,0 +1,82 @@
+---
+title: "ST_pipeline"
+output: html_document
+---
+Data: https://support.10xgenomics.com/spatial-gene-expression/datasets/1.0.0/V1_Breast_Cancer_Block_A_Section_1?
+File contents help: https://support.10xgenomics.com/spatial-gene-expression/software/pipelines/latest/output/images
+
+
+You MUST first unpack the gz files!!
+```{r setup, include=FALSE}
+#devtools::install_github("satijalab/seurat", ref = "spatial")
+library(backports)
+library(Seurat)
+#library(SeuratData)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+
+
+library(Matrix)
+library(rjson)
+library(cowplot)
+library(RColorBrewer)
+library(grid)
+library(readbitmap)
+library(hdf5r)
+library(data.table)
+
+# Uninstall seurat
+# install backports
+# put backports on the R library
+# devtools::install_github("satijalab/seurat", ref = "spatial") should work now
+
+# must download file from https://www.xquartz.org/
+library(imager)
+
+library(raster)
+```
+
+Load in spot position csv
+```{r}
+# Load in spot location CSV file(doesn't have headers)
+image_location <- read.csv("data/spatial/tissue_positions_list.csv", header=FALSE)
+names(image_location) <- c("barcode", "in_tissue", "array_row", "array_col", "pxl_col_in_fullres(yValue)", "pxl_row_in_fullres(xValue)")
+```
+ 
+trying to produce image
+```{r}
+file_name <- 'data/V1_Breast_Cancer_Block_A_Section_1_image.tif'
+
+#creates a raster object from the tiff image file
+#imported_raster <- raster(str_name)
+wsi <- brick(file_name)
+
+#check to see the image contains the correct amount of pixels
+dim(wsi)
+plotRGB(wsi)
+
+e <- extent(13091, 13341, 4639, 4889)
+cropped_img <- crop(wsi, e)
+plotRGB(cropped_img)
+
+
+
+#checking the pixel distance between spots
+differences <- c()
+for (xIndex in seq(3, 127, by=2))
+{
+  for (yIndex in seq(3, 127, by=2))
+  {
+    differenceLeft <- image_location$`pxl_row_in_fullres(xValue)`[image_location$array_row == xIndex & image_location$array_col == yIndex] - image_location$`pxl_row_in_fullres(xValue)`[image_location$array_row == xIndex & image_location$array_col == yIndex - 2]
+    differenceDown <- image_location$`pxl_col_in_fullres(yValue)`[image_location$array_row == xIndex & image_location$array_col == yIndex] - image_location$`pxl_col_in_fullres(yValue)`[image_location$array_row == xIndex - 1 & image_location$array_col == yIndex - 1]
+    differences <- c(differences, differenceLeft)
+    append(differences, differenceDown)
+  }
+}
+mean(differences)
+hist(differences)
+```
+
+
+
