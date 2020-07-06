@@ -86,7 +86,7 @@ for (i in 1:length(image_location$in_tissue))
 
 
 
-Testing a CNN using kerasR
+Testing a NN using kerasR
 ```{r}
 library(kerasR)
 library(reticulate)
@@ -147,8 +147,15 @@ model %>% predict_classes(x_test)
 ```
 
 
-^^^ Everything above is using the MNIST dataset to test NN's on non ST image data ^^^
+^^^ The lines above are using the MNIST dataset to test NN's on non ST image data ^^^
 
+
+
+Testing a CNN found here: 
+
+```{r}
+
+```
 
 
 
