@@ -56,7 +56,7 @@ wsi <- brick(file_name)
 dim(wsi)
 plotRGB(wsi)
 
-e <- extent(13091, 13341, 4639, 4889)
+e <- extent(13091, 13341, 4639, 4889) #xmin, xmax, ymin, ymax
 cropped_img <- crop(wsi, e)
 plotRGB(cropped_img)
 
@@ -74,14 +74,44 @@ cropped_img <- crop(img, e)
 return(cropped_img)
 }
 
-for (i in 1:length(image_location$in_tissue))
+
+rotate <- function(x) t(apply(x, 2, rev))
+
+for (i in 1:10)#length(image_location$in_tissue))
 {
+  #crop image to spot
   cropped_img <- crop_spot(wsi, 
                            image_location$pxl_row_in_fullres_xValue[i], 
                            image_location$pxl_col_in_fullres_yValue[i])
-  plotRGB(cropped_img)
+  #edit spot image
+  m <- matrix(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.1, nrow = 272)
+  m <- rotate(m)
+  values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.1) <- as.vector(m)
+  m <- matrix(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.2, nrow = 272)
+  m <- rotate(m)
+  values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.2) <- as.vector(m)
+  m <- matrix(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.3, nrow = 272)
+  m <- rotate(m)
+  values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.3) <- as.vector(m)
+  
+  #plot spot image
+  plotRGB(cropped_img) #i <- 2
 }
+
 ```
+
+```{r}
+r <- raster(nrow=18, ncol=36)
+m <- matrix(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.1[1,], nrow = 272)
+values(r) <- as.vector(t(m))
+extent(r) <- extent(0, 360, -90, 90)
+rr <- rotate(r)
+
+
+```
+
+
+
 
 
 Messing around to learn about indexing from raster images and learned the average pixel distance between spot centers
