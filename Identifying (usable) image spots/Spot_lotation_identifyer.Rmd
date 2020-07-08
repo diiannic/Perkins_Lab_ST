@@ -80,12 +80,37 @@ for (i in 1:length(image_location$in_tissue))
   cropped_img <- crop_spot(wsi, 
                            image_location$pxl_row_in_fullres_xValue[i], 
                            image_location$pxl_col_in_fullres_yValue[i])
-  image(t(flip(x, 1)))
+  
 
 #edit spot image 
   plotRGB(cropped_img)
 }
 ```
+
+```{r}
+rotate <- function(x) t(apply(x, 2, rev))
+for (i in 1:10)#length(image_location$in_tissue))
+{
+  #crop image to spot
+  cropped_img <- crop_spot(wsi, 
+                           image_location$pxl_row_in_fullres_xValue[i], 
+                           image_location$pxl_col_in_fullres_yValue[i])
+  #edit spot image
+  m <- matrix(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.1, nrow = 272)
+  m <- rotate(m)
+  values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.1) <- as.vector(m)
+  m <- matrix(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.2, nrow = 272)
+  m <- rotate(m)
+  values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.2) <- as.vector(m)
+  m <- matrix(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.3, nrow = 272)
+  m <- rotate(m)
+  values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.3) <- as.vector(m)
+  
+  #plot spot image
+  plotRGB(cropped_img) #i <- 2
+}
+```
+
 ```{r}
 r <- raster(nrow=18, ncol=36)
 m <- matrix(1:ncell(r), nrow=18)
@@ -102,7 +127,9 @@ cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.1[50:100,50:100] <- vector(
 
 # when looking at the 3 different image chanels in the raster object, image 1 is red, 2 is green, and 3 is blue
 values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.1) <- vector(mode="integer", length=length(values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.1))) 
+
 values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.2) <- vector(mode="integer", length=length(values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.2))) 
+
 values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.3) <- vector(mode="integer", length=length(values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.3))) 
 
 #writeRaster(cropped_img, filename='data/testingRaster', format='GTiff', bandorder='BIL', overwrite=TRUE)
