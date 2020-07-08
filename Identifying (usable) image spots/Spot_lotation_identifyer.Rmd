@@ -40,13 +40,14 @@ library(raster)
 Load in spot position csv
 ```{r}
 # Load in spot location CSV file(doesn't have headers)
-image_location <- read.csv("data/spatial/tissue_positions_list.csv", header=FALSE)
+image_location <- read.csv("C:/Users/malih/Desktop/Perkins_Lab_ST/Identifying (usable) image spots/data/spatial/tissue_positions_list.csv", header=FALSE)
 names(image_location) <- c("barcode", "in_tissue", "array_row", "array_col", "pxl_col_in_fullres_yValue", "pxl_row_in_fullres_xValue")
 ```
  
 trying to produce image
 ```{r}
-file_name <- 'data/V1_Breast_Cancer_Block_A_Section_1_image.tif'
+setwd("C:/Users/malih/Desktop/Perkins_Lab_ST/Identifying (usable) image spots/data/")
+file_name <- 'V1_Breast_Cancer_Block_A_Section_1_image.tif'
 
 #creates a raster object from the tiff image file
 #imported_raster <- raster(str_name)
@@ -79,10 +80,20 @@ for (i in 1:length(image_location$in_tissue))
   cropped_img <- crop_spot(wsi, 
                            image_location$pxl_row_in_fullres_xValue[i], 
                            image_location$pxl_col_in_fullres_yValue[i])
+  image(t(flip(x, 1)))
+
+#edit spot image 
   plotRGB(cropped_img)
 }
 ```
-
+```{r}
+r <- raster(nrow=18, ncol=36)
+m <- matrix(1:ncell(r), nrow=18)
+#took our n matrix, transposed the matrix
+values(r) <- as.vector(t(m))
+extent(r) <- extent(0, 360, -90, 90)
+rr <- rotate(r)
+```
 
 Messing around to learn about indexing from raster images and learned the average pixel distance between spot centers
 ```{r}
