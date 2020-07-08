@@ -42,6 +42,8 @@ Load in spot position csv
 # Load in spot location CSV file(doesn't have headers)
 image_location <- read.csv("C:/Users/malih/Desktop/Perkins_Lab_ST/Identifying (usable) image spots/data/spatial/tissue_positions_list.csv", header=FALSE)
 names(image_location) <- c("barcode", "in_tissue", "array_row", "array_col", "pxl_col_in_fullres_yValue", "pxl_row_in_fullres_xValue")
+
+image_location
 ```
  
 trying to produce image
@@ -88,8 +90,44 @@ for (i in 1:length(image_location$in_tissue))
 ```
 
 ```{r}
+#one method for changing the contrast/brightness
+#rotate <- function(x) t(apply(x, 2, rev))
+for (i in 1)#length(image_location$in_tissue))
+{
+  #crop image to spot
+  cropped_img <- crop_spot(wsi, 
+                           image_location$pxl_row_in_fullres_xValue[i], 
+                           image_location$pxl_col_in_fullres_yValue[i])
+  #edit spot image
+  m <- matrix(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.1, nrow = 272)
+  m <- rotate(m)
+  values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.1) <- as.vector(m)
+  m <- matrix(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.2, nrow = 272)
+  m <- rotate(m)
+  values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.2) <- as.vector(m)
+  m <- matrix(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.3, nrow = 272)
+  m <- rotate(m)
+  values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.3) <- as.vector(m)
+  
+  
+  #edit spot's brightness
+  stretch_image <- raster::stretch(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.1, minq = .50, maxq = .65)
+  stretch_image <- raster::stretch(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.2, minq = .50, maxq = .65)
+  stretch_image <- raster::stretch(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.3, minq = .50, maxq = .65)
+  
+  raster::plotRGB(cropped_img,
+        r = 1, g = 2, b = 3, scale= 600,stretch = "hist")
+  raster::plotRGB(cropped_img,
+        r = 1, g = 2, b = 3, scale= 500,stretch = "lin")
+}
+
+```
+
+```{r}
+#another method for adjusting the constrast
 rotate <- function(x) t(apply(x, 2, rev))
-for (i in 1:10)#length(image_location$in_tissue))
+
+for (i in 1:1)#length(image_location$in_tissue))
 {
   #crop image to spot
   cropped_img <- crop_spot(wsi, 
@@ -107,9 +145,11 @@ for (i in 1:10)#length(image_location$in_tissue))
   values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.3) <- as.vector(m)
   
   #plot spot image
-  plotRGB(cropped_img) #i <- 2
+  wash_rgb_contrast_stretch <- raster::stretch(cropped_img, minq = .02, maxq = .98)
+  raster::plotRGB(cropped_img)
 }
 ```
+
 
 ```{r}
 r <- raster(nrow=18, ncol=36)
