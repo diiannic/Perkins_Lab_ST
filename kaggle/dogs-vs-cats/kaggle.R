@@ -55,30 +55,3 @@ history <- model %>%
 plot(history)
 
 evaluate(model, cifar$test$x, cifar$test$y, verbose = 0)
-
-
-
-
-
-
-
-
-
-
-
-
-#testing
-list1 <- list (c(1:5), "hi", 0 + 5i) 
-list2 <- list(c(6:8)) 
-
-# create a list_data with two lists as its elements 
-list_data <- list(list1, list2) 
-print ("The two-dimensional list is : ") 
-print (list_data) 
-
-
-
-
-
-
-
