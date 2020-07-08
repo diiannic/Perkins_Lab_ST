@@ -40,13 +40,14 @@ library(raster)
 Load in spot position csv
 ```{r}
 # Load in spot location CSV file(doesn't have headers)
-image_location <- read.csv("data/spatial/tissue_positions_list.csv", header=FALSE)
+image_location <- read.csv("C:/Users/malih/Desktop/Perkins_Lab_ST/Identifying (usable) image spots/data/spatial/tissue_positions_list.csv", header=FALSE)
 names(image_location) <- c("barcode", "in_tissue", "array_row", "array_col", "pxl_col_in_fullres_yValue", "pxl_row_in_fullres_xValue")
 ```
  
 trying to produce image
 ```{r}
-file_name <- 'data/V1_Breast_Cancer_Block_A_Section_1_image.tif'
+setwd("C:/Users/malih/Desktop/Perkins_Lab_ST/Identifying (usable) image spots/data/")
+file_name <- 'V1_Breast_Cancer_Block_A_Section_1_image.tif'
 
 #creates a raster object from the tiff image file
 #imported_raster <- raster(str_name)
@@ -56,7 +57,7 @@ wsi <- brick(file_name)
 dim(wsi)
 plotRGB(wsi)
 
-e <- extent(13091, 13341, 4639, 4889) #xmin, xmax, ymin, ymax
+e <- extent(13091, 13341, 4639, 4889)
 cropped_img <- crop(wsi, e)
 plotRGB(cropped_img)
 
@@ -74,9 +75,20 @@ cropped_img <- crop(img, e)
 return(cropped_img)
 }
 
+for (i in 1:length(image_location$in_tissue))
+{
+  cropped_img <- crop_spot(wsi, 
+                           image_location$pxl_row_in_fullres_xValue[i], 
+                           image_location$pxl_col_in_fullres_yValue[i])
+  
 
+#edit spot image 
+  plotRGB(cropped_img)
+}
+```
+
+```{r}
 rotate <- function(x) t(apply(x, 2, rev))
-
 for (i in 1:10)#length(image_location$in_tissue))
 {
   #crop image to spot
@@ -97,22 +109,16 @@ for (i in 1:10)#length(image_location$in_tissue))
   #plot spot image
   plotRGB(cropped_img) #i <- 2
 }
-
 ```
 
 ```{r}
 r <- raster(nrow=18, ncol=36)
-m <- matrix(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.1[1,], nrow = 272)
+m <- matrix(1:ncell(r), nrow=18)
+#took our n matrix, transposed the matrix
 values(r) <- as.vector(t(m))
 extent(r) <- extent(0, 360, -90, 90)
 rr <- rotate(r)
-
-
 ```
-
-
-
-
 
 Messing around to learn about indexing from raster images and learned the average pixel distance between spot centers
 ```{r}
@@ -121,7 +127,9 @@ cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.1[50:100,50:100] <- vector(
 
 # when looking at the 3 different image chanels in the raster object, image 1 is red, 2 is green, and 3 is blue
 values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.1) <- vector(mode="integer", length=length(values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.1))) 
+
 values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.2) <- vector(mode="integer", length=length(values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.2))) 
+
 values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.3) <- vector(mode="integer", length=length(values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.3))) 
 
 #writeRaster(cropped_img, filename='data/testingRaster', format='GTiff', bandorder='BIL', overwrite=TRUE)

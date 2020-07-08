@@ -1,0 +1,12 @@
+
+
+```{r}
+install.packages('EBImage')
+install.packages('stringr')
+install.packages('pbapply')
+```
+```{r}
+secondCat <- readImage("train/cat.1.jpg")
+display(secondCat)
+```
+
