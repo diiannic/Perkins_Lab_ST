@@ -99,6 +99,7 @@ for (i in training_indexes) #This for loop takes about an hour and a half
   cropped_img <- crop_spot(wsi, 
                            image_location$pxl_row_in_fullres_xValue[i], 
                            image_location$pxl_col_in_fullres_yValue[i])
+  #Manipulate colors??
   #plotRGB(cropped_img) 
   cropped_img <- as.array(cropped_img)
   training_data[index_count,,,] <- cropped_img
