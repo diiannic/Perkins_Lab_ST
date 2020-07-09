@@ -90,6 +90,7 @@ for (i in 1:length(image_location$in_tissue))
 ```
 
 ```{r}
+#for loop for function
 rotate <- function(x) t(apply(x, 2, rev))
 distort_spot <- function(img, times_to_rotate, colour_distortion_value){
   for (j in 1:times_to_rotate){#times_to_rotate is number 1 to 4
