@@ -90,28 +90,6 @@ for (i in 1:length(image_location$in_tissue))
 ```
 
 ```{r}
-#for loop for function
-rotate <- function(x) t(apply(x, 2, rev))
-distort_spot <- function(img, times_to_rotate, colour_distortion_value){
-  for (j in 1:times_to_rotate){#times_to_rotate is number 1 to 4
-    for (i in 1:3){
-      m <- matrix(getValues(img)[,i], nrow = nrow(img))
-      m <- rotate(m)
-      setValues(img, as.vector(m),layer = i)
-    }
-  }
-  
-    img <- raster::stretch(img, minq = colour_distortion_value, maxq = 1-colour_distortion_value)
-
-  return(img)
-}
-
-plotRGB(cropped_img)
-plotRGB(distort_spot(cropped_img,2,0.02))
-
-```
-
-```{r}
 #one method for changing the contrast/brightness
 #rotate <- function(x) t(apply(x, 2, rev))
 for (i in 1)#length(image_location$in_tissue))
@@ -133,12 +111,9 @@ for (i in 1)#length(image_location$in_tissue))
   
   
   #edit spot's brightness
-  stretch_image <- raster::stretch(cropped_img, minq = .02, maxq = .98)
-  #stretch_image <- raster::stretch(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.2, minq = .50, maxq = .65)
-  #stretch_image <- raster::stretch(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.3, minq = .50, maxq = .65)
-  
-  plotRGB(cropped_img)
-  raster::plotRGB(stretch_image)
+  stretch_image <- raster::stretch(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.1, minq = .50, maxq = .65)
+  stretch_image <- raster::stretch(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.2, minq = .50, maxq = .65)
+  stretch_image <- raster::stretch(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.3, minq = .50, maxq = .65)
   
   raster::plotRGB(cropped_img,
         r = 1, g = 2, b = 3, scale= 600,stretch = "hist")
@@ -146,6 +121,9 @@ for (i in 1)#length(image_location$in_tissue))
         r = 1, g = 2, b = 3, scale= 500,stretch = "lin")
 }
 
+getValues(cropped_img)[,1]
+setValues(cropped_img, getValues(cropped_img)[,1], layer=1)
+#cropped_img[,,1] == cropped_img[,,1]
 ```
 
 ```{r}
@@ -170,8 +148,7 @@ for (i in 1:1)#length(image_location$in_tissue))
   values(cropped_img$V1_Breast_Cancer_Block_A_Section_1_image.3) <- as.vector(m)
   
   #plot spot image
-  plotRGB(cropped_img)
-  #wash_rgb_contrast_stretch <- raster::stretch(cropped_img, minq = .40, maxq = .60)
+  wash_rgb_contrast_stretch <- raster::stretch(cropped_img, minq = .02, maxq = .98)
   raster::plotRGB(cropped_img)
 }
 ```

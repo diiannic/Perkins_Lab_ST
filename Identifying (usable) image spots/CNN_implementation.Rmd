@@ -27,25 +27,24 @@ library(readbitmap)
 library(hdf5r)
 library(data.table)
 
-# Uninstall seurat
-# install backports
-# put backports on the R library
-# devtools::install_github("satijalab/seurat", ref = "spatial") should work now
-
-# must download file from https://www.xquartz.org/
-#library(imager)
 
 library(raster)
+
+
+library(keras)
+library(EBImage)
+library(stringr)
+library(pbapply)
 ```
 
-Load in spot position csv
+Loading in spot position csv
 ```{r}
 # Load in spot location CSV file(doesn't have headers)
 image_location <- read.csv("data/spatial/tissue_positions_list.csv", header=FALSE)
 names(image_location) <- c("barcode", "in_tissue", "array_row", "array_col", "pxl_col_in_fullres_yValue", "pxl_row_in_fullres_xValue")
 ```
  
-trying to produce image
+Loading in the Whole Slide Image (WSI)
 ```{r}
 file_name <- 'data/V1_Breast_Cancer_Block_A_Section_1_image.tif'
 
@@ -81,11 +80,13 @@ return(cropped_img)
 ```
 
 
-This partitions the spots into testing and training data using a random sampling
+Partitioning the spots into testing and training data using a random sampling
+try the combine from here: https://www.youtube.com/watch?v=LxTDLEdetmI
 ```{r}
 set.seed(1998)
+#nrow should be used when looking at the entire data set and no longer restricting to 500 spots
 index <- sample(2,
-                nrow(image_location),
+                500, #nrow(image_location),
                 replace = TRUE,
                 prob = c(0.7, 0.3)) #splits data into testing and training
 
@@ -94,7 +95,7 @@ index_count <- 1
 training_indexes <- which(index == 1)
 print("Collecting training data")
 pb <- txtProgressBar(min = 0, max = length(training_indexes), style = 3)
-for (i in training_indexes) #This for loop takes about an hour and a half
+for (i in training_indexes) #This for loop takes about an hour and a half when run on all spots
 {
   cropped_img <- crop_spot(wsi, 
                            image_location$pxl_row_in_fullres_xValue[i], 
@@ -112,10 +113,10 @@ close(pb)
 
 testing_data <- array(NA, dim=c(sum(index == 2), 272, 272, 3))
 index_count <- 1
-testing_indexes <- which(index == 2)[1:10]
+testing_indexes <- which(index == 2)
 print("Collecting testing data")
 pb <- txtProgressBar(min = 0, max = length(testing_indexes), style = 3)
-for (i in testing_indexes) #This for loop takes about 40 mins
+for (i in testing_indexes) #This for loop takes about 40 mins when run on all spots
 {
   cropped_img <- crop_spot(wsi, 
                            image_location$pxl_row_in_fullres_xValue[i], 
@@ -131,19 +132,35 @@ close(pb)
 ```
 
 
-Getting gene expression data and determining the spot image they correspond to 
+Loading in gene expression data and formatting the indexes to their corresponding spot image
 ```{r}
-#FIND THE GENE EXPRESSION DATA IN THIS CELL!!!
+feature_matrix <- Load10X_Spatial(data.dir = "/Users/colten/Desktop/Perkins_Lab_ST/Identifying (usable) image spots/data",
+                         filename = "V1_Breast_Cancer_Block_A_Section_1_filtered_feature_bc_matrix.h5",
+                         assay = "Spatial",
+                         slice = "slice1",
+                         filter.matrix = TRUE,
+                         to.upper = FALSE)
 
+barcode_feature_matrix <- GetAssayData(object = feature_matrix, slot = "counts")
+barcodes <- barcode_feature_matrix@Dimnames[2][[1]]
+features <- barcode_feature_matrix@Dimnames[1][[1]]
+
+indexes_of_training_barcodes <- match(image_location$barcode[training_indexes], barcodes)
+training_barcode_feature_matrix <- t(barcode_feature_matrix[,indexes_of_training_barcodes])
+dim(training_barcode_feature_matrix)
+
+indexes_of_testing_barcodes <- match(image_location$barcode[testing_indexes], barcodes)
+testing_barcode_feature_matrix <- t(barcode_feature_matrix[,indexes_of_testing_barcodes])
+dim(testing_barcode_feature_matrix)
 ```
 
 
-```{r}
-library(keras)
-library(EBImage)
-library(stringr)
-library(pbapply)
 
+
+
+
+CNN testing
+```{r}
 index <- 1:10
 
 par(mfcol = c(2,5), mar = rep(1, 4), oma = rep(0.2, 4))
@@ -159,14 +176,15 @@ model <- keras_model_sequential() %>%
   layer_max_pooling_2d(pool_size = c(2,2)) %>% 
   layer_conv_2d(filters = 64, kernel_size = c(3,3), activation = "relu") %>% 
   layer_max_pooling_2d(pool_size = c(2,2)) %>% 
-  layer_conv_2d(filters = 64, kernel_size = c(3,3), activation = "relu")
+  layer_conv_2d(filters = 64, kernel_size = c(3,3), activation = "relu") %>%
+  layer_max_pooling_2d(pool_size = c(2,2))
 
 summary(model)
 
 model %>% 
   layer_flatten() %>% 
-  layer_dense(units = 64, activation = "relu") %>% 
-  layer_dense(units = 10, activation = "softmax")
+  layer_dense(units = 100, activation = "relu") %>% 
+  layer_dense(units = length(features), activation = "softmax")
 
 summary(model)
 
@@ -179,13 +197,16 @@ model %>% compile(
 
 history <- model %>% 
   fit(
-    x = cifar$train$x, y = cifar$train$y,
-    epochs = 10,
-    validation_data = unname(cifar$test),
+    x = training_data, y = training_barcode_feature_matrix,
+    epochs = 5,
+    #validation_data = unname(cifar$test),
     verbose = 2
   )
+
+dim(training_barcode_feature_matrix)
 
 plot(history)
 
 evaluate(model, cifar$test$x, cifar$test$y, verbose = 0)
 ```
+
