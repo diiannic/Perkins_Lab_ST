@@ -134,17 +134,17 @@ distort_spot <- function(img, times_to_rotate, colour_distortion_value){
     for (i in 1:3){
       m <- matrix(getValues(img)[,i], nrow = nrow(img))
       m <- rotate(m)
-      setValues(img, as.vector(m),layer = i)
+      img <- setValues(img, as.vector(m),layer = i)
     }
   }
   
-    img <- raster::stretch(img, minq = colour_distortion_value, maxq = 1-colour_distortion_value)
+  img <- raster::stretch(img, minq = colour_distortion_value, maxq = 1-colour_distortion_value)
 
   return(img)
 }
 
 plotRGB(cropped_img)
-plotRGB(distort_spot(cropped_img,2,0.02))
+plotRGB(distort_spot(cropped_img,2,0.01))
 ```
 
 ```{r}

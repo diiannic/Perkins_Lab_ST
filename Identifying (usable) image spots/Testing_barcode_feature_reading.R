@@ -38,7 +38,7 @@ model %>%
 # generate dummy training data
 x_train <- array(runif(1000 * timesteps * data_dim), dim = c(1000, timesteps, data_dim))
 y_train <- matrix(runif(1000 * num_classes), nrow = 1000, ncol = num_classes)
-
+dim(y_train)
 # generate dummy validation data
 x_val <- array(runif(100 * timesteps * data_dim), dim = c(100, timesteps, data_dim))
 y_val <- matrix(runif(100 * num_classes), nrow = 100, ncol = num_classes)
@@ -54,3 +54,17 @@ score = model %>% evaluate(x_val, y_val, batch_size=64)
 #show predictions
 features <- model %>% predict(x_val)
 
+
+
+#devtools::install_github("rstudio/keras", force = TRUE)
+library(keras)
+keras::install_keras()
+keras::install_tensorflow()
+
+library("tensorflow")
+tensorflow::use_condaenv("r-tensorflow")
+
+# TF test
+sess = tf$Session()
+hello <- tf$constant('Hello, TensorFlow!')
+sess$run(hello)

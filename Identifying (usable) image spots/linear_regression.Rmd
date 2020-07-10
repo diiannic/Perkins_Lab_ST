@@ -70,10 +70,10 @@ image_location <- image_location %>%
 
 #defining a function to get a cropped spot image given the x and y coordinates of the center of the spot
 crop_spot <- function(img, x, y){
-e <- extent(x - 136, #using 136 since it is ~half the average distance (273 pixels) between spot centers. We could consider using a different measure to more closely fit to the spot ratius.
-              x + 136,
-              y - 136,
-              y + 136)
+e <- extent(x, #using 136 since it is ~half the average distance (273 pixels) between spot centers. We could consider using a different measure to more closely fit to the spot ratius.
+              x + 1,
+              y,
+              y + 1)
 cropped_img <- crop(img, e)
 return(cropped_img)
 }
@@ -86,11 +86,11 @@ Partitioning the spots into testing and training data using a random sampling
 set.seed(1998)
 #nrow should be used when looking at the entire data set and no longer restricting to 500 spots
 index <- sample(2,
-                20, #nrow(image_location),
+                100, #nrow(image_location),
                 replace = TRUE,
                 prob = c(0.7, 0.3)) #splits data into testing and training
 
-training_data <- array(NA, dim=c(sum(index == 1), 272, 272, 3))
+training_data <- array(NA, dim=c(sum(index == 1), 1, 1, 3))
 index_count <- 1 
 training_indexes <- which(index == 1)
 print("Collecting training data")
@@ -100,7 +100,6 @@ for (i in training_indexes) #This for loop takes about an hour and a half when r
   cropped_img <- crop_spot(wsi, 
                            image_location$pxl_row_in_fullres_xValue[i], 
                            image_location$pxl_col_in_fullres_yValue[i])
-  #Manipulate colors??
   #plotRGB(cropped_img) 
   cropped_img <- as.array(cropped_img)
   training_data[index_count,,,] <- cropped_img
@@ -111,7 +110,7 @@ close(pb)
 #dim(training_data)
 
 
-testing_data <- array(NA, dim=c(sum(index == 2), 272, 272, 3))
+testing_data <- array(NA, dim=c(sum(index == 2), 1, 1, 3))
 index_count <- 1
 testing_indexes <- which(index == 2)
 print("Collecting testing data")
@@ -159,72 +158,27 @@ dim(testing_barcode_feature_matrix)
 
 
 
-CNN testing
+Linear regression testing
 ```{r}
-index <- 1:10
+d1 <- c()
+d2 <- c()
+d3 <- c()
 
-par(mfcol = c(2,5), mar = rep(1, 4), oma = rep(0.2, 4))
-training_data[index,,,] %>% 
-  purrr::array_tree(1) %>%
-  purrr::map(as.raster, max = 255) %>%
-  purrr::iwalk(~{plot(.x)})
+for (i in 1:dim(training_data)[1]) {
+  d1 <- append(d1, training_data[i,,,1]) 
+  d2 <- append(d2, training_data[i,,,2]) 
+  d3 <- append(d3, training_data[i,,,3]) 
+}
 
-# Fix structure for 2d CNN
-model <- keras_model_sequential() %>% 
-  layer_conv_2d(filters = 32, kernel_size = c(3,3), activation = "relu", 
-                input_shape = c(272,272,3)) %>% 
-  layer_max_pooling_2d(pool_size = c(2,2)) %>% 
-  layer_conv_2d(filters = 64, kernel_size = c(3,3), activation = "relu") %>% 
-  layer_max_pooling_2d(pool_size = c(2,2)) %>% 
-  layer_conv_2d(filters = 64, kernel_size = c(3,3), activation = "relu") %>%
-  layer_max_pooling_2d(pool_size = c(2,2))
+training_barcode_feature_matrix <- training_barcode_feature_matrix %>%
+  as.matrix() %>%
+  cbind(red = d1,
+         green = d2,
+         blue = d3) %>%
+  as.data.frame()
 
-summary(model)
-
-model %>% 
-  layer_flatten() %>% 
-  layer_dense(units = 10, activation = "relu") %>% 
-  layer_dense(units = length(features), activation = "softmax")
-
-summary(model)
-
-#notes
-#start simple to establish baseline
-#fully linear: simplify to 1 pixel (RGB value so 3 inputs to network)
-#don't need C in CNN just make a linear layer 3 inputs #genes outputs (use linear regression code for this)
-#percentage of variance explained
-#maybe average over pixel region?
-
-
-model %>% compile(
-  optimizer = "adam",
-  loss = "sparse_categorical_crossentropy",
-  metrics = "accuracy"
-)
-
-#t_array <- array(NA, dim = c(1, length(training_barcode_feature_matrix[,1]),length(features)))
-
-#t_array <- matrix(as.numeric(as.vector(training_barcode_feature_matrix)), nrow = length(training_barcode_feature_matrix[,1]), ncol = length(features))[,1:10]
-
-#t_array <- array_reshape(as.array(training_barcode_feature_matrix), c(length(training_barcode_feature_matrix[,1]), length(features)))
-
-dim(t_array)
-
-history <- model %>% 
-  fit(
-    x = training_data, y = t_array
-    #epochs = 5, DO THIS NEXT
-    #validation_data = unname(cifar$test),
-    #verbose = 2
-  )
-
-dim(t_array)
-dim(training_data)
-
-plot(history)
-
-evaluate(model, testing_data, as.matrix(testing_barcode_feature_matrix)[,1], verbose = 0)
-predict_classes(model, testing_data)
+# Multiple Linear Regression Example
+fit <- lm(ISG15 ~ red + green + blue, data=training_barcode_feature_matrix)
+summary(fit) # show results
 ```
-
 
