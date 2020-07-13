@@ -91,6 +91,7 @@ model %>%
 #new fine tunning to the model
 # 40% of neurons are not used
 #plot looks more like a linear line
+# no overfitting here, val loss is lower than the loss
 library(keras)
 model <- keras_model_sequential()
 model %>% 
@@ -105,11 +106,10 @@ model %>%
 #mean square error and fitting the model 
 
 model %>% compile(loss = 'mse',
-                  optimizer = optimizer_rmsprop(lr = 0.002),
+                  optimizer = optimizer_rmsprop(lr = 0.001),#learning rate how often weights in the network are updated, change to 0.01-0.05 to see which one works best,l
                   metrics = 'mae')
 
 # Fit Model
-# no overfitting here, val loss is lower than the loss
 mymodel <- model %>%
         fit(training,
             trainingtarget,
