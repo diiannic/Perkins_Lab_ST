@@ -185,7 +185,7 @@ compile(model, loss = 'categorical_crossentropy', optimizer = optimizer_rmsprop(
 
 # train
 model %>% fit( 
-  training_data, training_barcode_feature_matrix, batch_size = 32, epochs = 10
+  training_data, training_barcode_feature_matrix, batch_size = 64, epochs = 10
 )
 
 #test

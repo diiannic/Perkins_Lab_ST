@@ -57,14 +57,14 @@ features <- model %>% predict(x_val)
 
 
 #devtools::install_github("rstudio/keras", force = TRUE)
-library(keras)
-keras::install_keras()
-keras::install_tensorflow()
-
-library("tensorflow")
-tensorflow::use_condaenv("r-tensorflow")
-
-# TF test
-sess = tf$Session()
-hello <- tf$constant('Hello, TensorFlow!')
-sess$run(hello)
+# library(keras)
+# keras::install_keras()
+# 
+# 
+# library("tensorflow")
+# #tensorflow::use_condaenv("r-tensorflow")
+# 
+# # TF test
+# sess = tf$Session()
+# hello <- tf$constant('Hello, TensorFlow!')
+# sess$run(hello)

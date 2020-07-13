@@ -86,7 +86,7 @@ Partitioning the spots into testing and training data using a random sampling
 set.seed(1998)
 #nrow should be used when looking at the entire data set and no longer restricting to 500 spots
 index <- sample(2,
-                20, #nrow(image_location),
+                nrow(image_location),
                 replace = TRUE,
                 prob = c(0.7, 0.3)) #splits data into testing and training
 
@@ -134,7 +134,7 @@ close(pb)
 
 Loading in gene expression data and formatting the indexes to their corresponding spot image
 ```{r}
-feature_matrix <- Load10X_Spatial(data.dir = "/Users/malih/Desktop/Perkins_Lab_ST/Identifying (usable) image spots/data",
+feature_matrix <- Load10X_Spatial(data.dir = "/Users/colten/Desktop/Perkins_Lab_ST/Identifying (usable) image spots/data",
                          filename = "V1_Breast_Cancer_Block_A_Section_1_filtered_feature_bc_matrix.h5",
                          assay = "Spatial",
                          slice = "slice1",
@@ -177,14 +177,11 @@ model <- keras_model_sequential() %>%
   layer_conv_2d(filters = 64, kernel_size = c(3,3), activation = "relu") %>% 
   layer_max_pooling_2d(pool_size = c(2,2)) %>% 
   layer_conv_2d(filters = 64, kernel_size = c(3,3), activation = "relu") %>%
-  layer_max_pooling_2d(pool_size = c(2,2))
-
-summary(model)
-
-model %>% 
+  layer_max_pooling_2d(pool_size = c(2,2)) %>% 
   layer_flatten() %>% 
   layer_dense(units = 10, activation = "relu") %>% 
-  layer_dense(units = length(features), activation = "softmax")
+  layer_dense(units = ncol(training_barcode_feature_matrix), activation = "softmax")
+
 
 summary(model)
 
@@ -195,36 +192,90 @@ summary(model)
 #percentage of variance explained
 #maybe average over pixel region?
 
-
 model %>% compile(
   optimizer = "adam",
-  loss = "sparse_categorical_crossentropy",
-  metrics = "accuracy"
+  loss = "categorical_crossentropy",
+  metrics = "mae"
 )
-
+#model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
 #t_array <- array(NA, dim = c(1, length(training_barcode_feature_matrix[,1]),length(features)))
 
 #t_array <- matrix(as.numeric(as.vector(training_barcode_feature_matrix)), nrow = length(training_barcode_feature_matrix[,1]), ncol = length(features))[,1:10]
 
 #t_array <- array_reshape(as.array(training_barcode_feature_matrix), c(length(training_barcode_feature_matrix[,1]), length(features)))
 
-dim(t_array)
+t_array <- as.matrix(data.frame(training_barcode_feature_matrix))
+colnames(t_array) <- NULL
+rownames(t_array) <- NULL
 
 history <- model %>% 
   fit(
-    x = training_data, y = t_array
-    #epochs = 5, DO THIS NEXT
-    #validation_data = unname(cifar$test),
+    x = training_data, y = t_array,
+    batch_size = 64,
+    epochs = 5
+    #validation_split = 0.2,
     #verbose = 2
   )
 
-dim(t_array)
-dim(training_data)
+  plot(history)
 
-plot(history)
-
-evaluate(model, testing_data, as.matrix(testing_barcode_feature_matrix)[,1], verbose = 0)
-predict_classes(model, testing_data)
+#evaluate(model, testing_data, as.matrix(testing_barcode_feature_matrix)[,1], verbose = 0)
+#predict_classes(model, testing_data)
 ```
 
 
+
+```{r}
+library(caret)
+set.seed(123)
+
+n = 400
+s = seq(.1, n / 10, .1)
+x1 = s * sin(s / 50) - rnorm(n) * 5 
+x2 = s * sin(s) + rnorm(n) * 10
+x3 = s * sin(s / 100) + 2 + rnorm(n) * 10
+y1 = x1 + x2 + x3 + 2 + rnorm(n) * 2
+y2 = x1 + x2 / 2 - x3 - 4 - rnorm(n)
+ 
+df = data.frame(x1, x2, x3, y1, y2)
+ 
+plot(s, df$y1, ylim = c(min(df), max(df)), type = "l", col = "blue")
+lines(s, df$y2, type = "l", col = "red")
+lines(s, df$x1, type = "l", col = "green")
+lines(s, df$x2, type = "l", col = "yellow")
+lines(s, df$x3, type = "l", col = "gray")
+ 
+indexes = createDataPartition(df$x1, p = .85, list = F)
+train = df[indexes,]
+test = df[-indexes,]
+
+xtrain = as.matrix(data.frame(train$x1, train$x2, train$x3))
+ytrain = as.matrix(data.frame(train$y1, train$y2))
+xtest = as.matrix(data.frame(test$x1, test$x2, test$x3))
+ytest = as.matrix(data.frame(test$y1[1:16], test$y2[1:16]))
+
+in_dim = dim(xtrain)[2]
+out_dim = dim(ytrain)[2]
+
+model = keras_model_sequential() %>%
+  layer_dense(units = 100, activation="relu", input_shape=in_dim) %>%
+  layer_dense(units = 32, activation = "relu") %>%
+  layer_dense(units = out_dim, activation = "linear")
+
+model %>% compile(
+  loss = "mse",
+  optimizer = "adam")
+
+model %>% summary()
+
+model %>% fit(xtrain, ytrain, epochs = 100, verbose = 0)
+scores = model %>% evaluate(xtrain, ytrain, verbose = 0)
+print(scores)
+predict(model, xtest)
+
+#devtools::install_github("andrie/deepviz")
+#library(deepviz)
+#library(magrittr)
+
+#model %>% plot_model()
+```
