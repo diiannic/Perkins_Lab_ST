@@ -1,0 +1,205 @@
+
+
+```{r setup, include=FALSE}
+#devtools::install_github("satijalab/seurat", ref = "spatial")
+library(backports)
+library(Seurat)
+#library(SeuratData)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+
+
+library(Matrix)
+library(rjson)
+library(cowplot)
+library(RColorBrewer)
+library(grid)
+library(readbitmap)
+library(hdf5r)
+library(data.table)
+
+
+library(raster)
+
+
+library(keras)
+library(EBImage)
+library(stringr)
+library(pbapply)
+```
+
+```{r}
+# Load in spot location CSV file(doesn't have headers)
+image_location <- read.csv("data/spatial/tissue_positions_list.csv", header=FALSE)
+names(image_location) <- c("barcode", "in_tissue", "array_row", "array_col", "pxl_col_in_fullres_yValue", "pxl_row_in_fullres_xValue")
+```
+
+```{r}
+file_name <- 'data/V1_Breast_Cancer_Block_A_Section_1_image.tif'
+
+#creates a raster object from the tiff image file
+#imported_raster <- raster(str_name)
+wsi <- brick(file_name)
+
+#check to see the image contains the correct amount of pixels
+dim(wsi)
+plotRGB(wsi)
+
+e <- extent(13091, 13341, 4639, 4889)
+cropped_img <- crop(wsi, e)
+plotRGB(cropped_img)
+```
+
+```{r}
+# grabbing only the spots with tissue
+image_location <- image_location %>%
+  filter(in_tissue == 1)
+
+#defining a function to get a cropped spot image given the x and y coordinates of the center of the spot
+crop_spot <- function(img, x, y){
+e <- extent(x - 136, #using 136 since it is ~half the average distance (273 pixels) between spot centers. We could consider using a different measure to more closely fit to the spot ratius.
+              x + 136,
+              y - 136,
+              y + 136)
+cropped_img <- crop(img, e)
+return(cropped_img)
+}
+```
+
+```{r}
+set.seed(1998)
+#nrow should be used when looking at the entire data set and no longer restricting to 500 spots
+index <- sample(2,
+                nrow(image_location),
+                replace = TRUE,
+                prob = c(0.7, 0.3)) #splits data into testing and training
+
+training_data <- array(NA, dim=c(sum(index == 1), 272*272))
+index_count <- 1 
+training_indexes <- which(index == 1)
+print("Collecting training data")
+pb <- txtProgressBar(min = 0, max = length(training_indexes), style = 3)
+for (i in training_indexes) #This for loop takes about an hour and a half when run on all spots
+{
+  cropped_img <- crop_spot(wsi, 
+                           image_location$pxl_row_in_fullres_xValue[i], 
+                           image_location$pxl_col_in_fullres_yValue[i])
+  #Manipulate colors??
+  #plotRGB(cropped_img) 
+  cropped_img <- as.array(cropped_img)
+  training_data[index_count,] <- as.array(as.vector(cropped_img[,,1]))
+  setTxtProgressBar(pb, index_count)
+  index_count <- index_count + 1
+}
+close(pb)
+#dim(training_data)
+
+
+testing_data <- array(NA, dim=c(sum(index == 2), 272*272))
+index_count <- 1
+testing_indexes <- which(index == 2)
+print("Collecting testing data")
+pb <- txtProgressBar(min = 0, max = length(testing_indexes), style = 3)
+for (i in testing_indexes) #This for loop takes about 40 mins when run on all spots
+{
+  cropped_img <- crop_spot(wsi, 
+                           image_location$pxl_row_in_fullres_xValue[i], 
+                           image_location$pxl_col_in_fullres_yValue[i])
+  #plotRGB(cropped_img)
+  cropped_img <- as.array(cropped_img)
+  testing_data[index_count,] <- as.array(as.vector(cropped_img[,,1]))
+  setTxtProgressBar(pb, index_count)
+  index_count <- index_count + 1
+}
+close(pb)
+#dim(testing_data)
+```
+
+```{r}
+feature_matrix <- Load10X_Spatial(data.dir = "/Users/malih/Desktop/Perkins_Lab_ST/Identifying (usable) image spots/data",
+                         filename = "V1_Breast_Cancer_Block_A_Section_1_filtered_feature_bc_matrix.h5",
+                         assay = "Spatial",
+                         slice = "slice1",
+                         filter.matrix = TRUE,
+                         to.upper = FALSE)
+
+barcode_feature_matrix <- GetAssayData(object = feature_matrix, slot = "counts")
+barcodes <- barcode_feature_matrix@Dimnames[2][[1]]
+features <- barcode_feature_matrix@Dimnames[1][[1]]
+
+indexes_of_training_barcodes <- match(image_location$barcode[training_indexes], barcodes)
+training_barcode_feature_matrix <- t(barcode_feature_matrix[,indexes_of_training_barcodes])
+dim(training_barcode_feature_matrix)
+
+indexes_of_testing_barcodes <- match(image_location$barcode[testing_indexes], barcodes)
+testing_barcode_feature_matrix <- t(barcode_feature_matrix[,indexes_of_testing_barcodes])
+dim(testing_barcode_feature_matrix)
+```
+
+#Deep neural network model
+
+#```{r}
+#started by normalizing the training data 
+# Normalize
+#mean and sd from training only
+m <- colMeans(training_data)
+#divide ssample into 2
+s <- apply(training_data, 2, sd)
+training_data <- scale(training_data, center = m, scale = s)
+testing_data <- scale(testing_data, center = m, scale = s)
+```
+
+```{r}
+
+```
+
+
+#```{r}
+# Fix structure for 2d CNN
+model <- keras_model_sequential() %>% 
+  layer_conv_2d(filters = 32, kernel_size = c(3,3), activation = "relu", 
+                input_shape = c(272,272,3)) %>% 
+  layer_max_pooling_2d(pool_size = c(2,2)) %>% 
+  layer_conv_2d(filters = 64, kernel_size = c(3,3), activation = "relu") %>% 
+  layer_max_pooling_2d(pool_size = c(2,2)) %>% 
+  layer_conv_2d(filters = 64, kernel_size = c(3,3), activation = "relu") %>%
+  layer_max_pooling_2d(pool_size = c(2,2))
+```
+
+```{r}
+#deep learning neural network
+index <- 1:10
+
+par(mfcol = c(2,5), mar = rep(1, 4), oma = rep(0.2, 4))
+training_data[index,,,] %>% 
+  purrr::array_tree(1) %>%
+  purrr::map(as.raster, max = 255) %>%
+  purrr::iwalk(~{plot(.x)})
+
+model <- keras_model_sequential() 
+model %>% 
+  layer_dense(units = 64, activation = "relu", input_shape = ncol(training_data)) %>%
+  layer_dense(units = 1, activation = "relu")
+  
+model %>% compile(loss = 'mse',
+                  optimizer = 'rmsprop',
+                  metrics = 'mae')
+model %>% fit( 
+  training_data, training_barcode_feature_matrix, batch_size = 32, epochs = 10)
+
+```
+
+```{r}
+
+model %>% evaluate(test, testtarget)
+pred <- model %>% predict(test)
+mean((testtarget-pred)^2)
+plot(testtarget, pred)
+```
+
+```{r}
+
+```
+
+
