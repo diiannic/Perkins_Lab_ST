@@ -143,21 +143,18 @@ feature_matrix <- Load10X_Spatial(data.dir = "/Users/colten/Desktop/Perkins_Lab_
 feature_matrix <- SCTransform(feature_matrix, assay = "Spatial", verbose = FALSE)
 
 SCT_barcode_feature_matrix <- t(GetAssayData(object = feature_matrix, slot = "scale.data"))
-
 barcodes <- rownames(SCT_barcode_feature_matrix)
 features <- colnames(SCT_barcode_feature_matrix)
 
+variable_features <- VariableFeatures(object = feature_matrix)
+# it looks like SCT_barcode_feature_matrix only has the 3000 most variable genes when normalized. Take a look at the number of genes in the original feature matrix
+
 indexes_of_training_barcodes <- match(image_location$barcode[training_indexes], barcodes)
-training_barcode_feature_matrix <- t(SCT_barcode_feature_matrix[indexes_of_training_barcodes,])
+training_barcode_feature_matrix <- SCT_barcode_feature_matrix[indexes_of_training_barcodes,]
 dim(training_barcode_feature_matrix)
 
-
 indexes_of_testing_barcodes <- match(image_location$barcode[testing_indexes], barcodes)
-testing_barcode_feature_matrix <- t(SCT_barcode_feature_matrix[indexes_of_testing_barcodes,])
-dim(testing_barcode_feature_matrix)
-
-indexes_of_testing_barcodes <- match(image_location$barcode[testing_indexes], barcodes)
-testing_barcode_feature_matrix <- t(barcode_feature_matrix[,indexes_of_testing_barcodes])
+testing_barcode_feature_matrix <- SCT_barcode_feature_matrix[indexes_of_testing_barcodes,]
 dim(testing_barcode_feature_matrix)
 ```
 
@@ -168,25 +165,44 @@ dim(testing_barcode_feature_matrix)
 
 Linear regression testing
 ```{r}
-d1 <- c()
-d2 <- c()
-d3 <- c()
+r <- c()
+g <- c()
+b <- c()
 
 for (i in 1:dim(training_data)[1]) {
-  d1 <- append(d1, training_data[i,,,1]) 
-  d2 <- append(d2, training_data[i,,,2]) 
-  d3 <- append(d3, training_data[i,,,3]) 
+  r <- append(r, training_data[i,,,1]) 
+  g <- append(g, training_data[i,,,2]) 
+  b <- append(b, training_data[i,,,3]) 
 }
 
 training_barcode_feature_matrix <- training_barcode_feature_matrix %>%
   as.matrix() %>%
-  cbind(red = d1,
-         green = d2,
-         blue = d3) %>%
+  cbind(red = r,
+         green = g,
+         blue = b) %>%
   as.data.frame()
 
+
+percent_explained_red <- c()
+percent_explained_blue <- c()
+percent_explained_green <- c()
+percent_explained_residual <- c()
+
 # Multiple Linear Regression Example
-fit <- lm(ISG15 ~ red + green + blue, data=training_barcode_feature_matrix)
-summary(fit) # show results
+for (i in variable_features[1:1000]) {
+  fit <- lm(training_barcode_feature_matrix[,i] ~ training_barcode_feature_matrix[,"red"] + training_barcode_feature_matrix[,"green"] + training_barcode_feature_matrix[,"blue"])
+  af <- anova(fit)
+  afss <- af$"Sum Sq"
+  percent_explained <-afss/sum(afss)*100
+  percent_explained_red <- append(percent_explained_red, percent_explained[1])
+  percent_explained_blue <- append(percent_explained_blue, percent_explained[2])
+  percent_explained_green <- append(percent_explained_green, percent_explained[3])
+  percent_explained_residual <- append(percent_explained_residual, percent_explained[4])
+}
+
+hist(percent_explained_red)
+hist(percent_explained_blue)
+hist(percent_explained_green)
+hist(percent_explained_residual)
 ```
 
