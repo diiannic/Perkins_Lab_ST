@@ -42,6 +42,7 @@ Loading in spot position csv
 # Load in spot location CSV file(doesn't have headers)
 image_location <- read.csv("data/spatial/tissue_positions_list.csv", header=FALSE)
 names(image_location) <- c("barcode", "in_tissue", "array_row", "array_col", "pxl_col_in_fullres_yValue", "pxl_row_in_fullres_xValue")
+cropped_img_width <- 100
 ```
  
 Loading in the Whole Slide Image (WSI)
@@ -70,10 +71,10 @@ image_location <- image_location %>%
 
 #defining a function to get a cropped spot image given the x and y coordinates of the center of the spot
 crop_spot <- function(img, x, y){
-e <- extent(x - 136, #using 136 since it is ~half the average distance (273 pixels) between spot centers. We could consider using a different measure to more closely fit to the spot ratius.
-              x + 136,
-              y - 136,
-              y + 136)
+e <- extent(x - (cropped_img_width/2), #using 136 since it is ~half the average distance (273 pixels) between spot centers. We could consider using a different measure to more closely fit to the spot ratius.
+              x + (cropped_img_width/2),
+              y - (cropped_img_width/2),
+              y + (cropped_img_width/2))
 cropped_img <- crop(img, e)
 return(cropped_img)
 }
@@ -90,7 +91,7 @@ index <- sample(2,
                 replace = TRUE,
                 prob = c(0.7, 0.3)) #splits data into testing and training
 
-training_data <- array(NA, dim=c(sum(index == 1), 272*272))
+training_data <- array(NA, dim=c(sum(index == 1), cropped_img_width*cropped_img_width))
 index_count <- 1 
 training_indexes <- which(index == 1)
 print("Collecting training data")
@@ -103,7 +104,7 @@ for (i in training_indexes) #This for loop takes about an hour and a half when r
   #Manipulate colors??
   #plotRGB(cropped_img) 
   cropped_img <- as.array(cropped_img)
-  training_data[index_count,] <- as.array(as.vector(cropped_img[,,1])) - 127.5
+  training_data[index_count,] <- as.array(as.vector(cropped_img[,,1]))
   setTxtProgressBar(pb, index_count)
   index_count <- index_count + 1
 }
@@ -111,7 +112,7 @@ close(pb)
 #dim(training_data)
 
 
-testing_data <- array(NA, dim=c(sum(index == 2), 272*272))
+testing_data <- array(NA, dim=c(sum(index == 2), cropped_img_width*cropped_img_width))
 index_count <- 1
 testing_indexes <- which(index == 2)
 print("Collecting testing data")
@@ -123,7 +124,7 @@ for (i in testing_indexes) #This for loop takes about 40 mins when run on all sp
                            image_location$pxl_col_in_fullres_yValue[i])
   #plotRGB(cropped_img)
   cropped_img <- as.array(cropped_img)
-  testing_data[index_count,] <- as.array(as.vector(cropped_img[,,1])) - 127.5
+  testing_data[index_count,] <- as.array(as.vector(cropped_img[,,1])) 
   setTxtProgressBar(pb, index_count)
   index_count <- index_count + 1
 }
@@ -134,23 +135,27 @@ close(pb)
 
 Loading in gene expression data and formatting the indexes to their corresponding spot image
 ```{r}
-feature_matrix <- Load10X_Spatial(data.dir = "/Users/colten/Desktop/Perkins_Lab_ST/Identifying (usable) image spots/data",
+feature_matrix <- Load10X_Spatial(data.dir = "/Users/malih/Desktop/Perkins_Lab_ST/Identifying (usable) image spots/data",
                          filename = "V1_Breast_Cancer_Block_A_Section_1_filtered_feature_bc_matrix.h5",
                          assay = "Spatial",
                          slice = "slice1",
                          filter.matrix = TRUE,
                          to.upper = FALSE)
 
-barcode_feature_matrix <- GetAssayData(object = feature_matrix, slot = "counts")
-barcodes <- barcode_feature_matrix@Dimnames[2][[1]]
-features <- barcode_feature_matrix@Dimnames[1][[1]]
+feature_matrix <- SCTransform(feature_matrix, assay = "Spatial", verbose = FALSE)
+
+SCT_barcode_feature_matrix <- t(GetAssayData(object = feature_matrix, slot = "scale.data"))
+barcodes <- rownames(SCT_barcode_feature_matrix)
+features <- colnames(SCT_barcode_feature_matrix)
+
+variable_features <- VariableFeatures(object = feature_matrix)
 
 indexes_of_training_barcodes <- match(image_location$barcode[training_indexes], barcodes)
-training_barcode_feature_matrix <- t(barcode_feature_matrix[,indexes_of_training_barcodes])
+training_barcode_feature_matrix <- SCT_barcode_feature_matrix[indexes_of_training_barcodes,variable_features[1:1000]]
 dim(training_barcode_feature_matrix)
 
 indexes_of_testing_barcodes <- match(image_location$barcode[testing_indexes], barcodes)
-testing_barcode_feature_matrix <- t(barcode_feature_matrix[,indexes_of_testing_barcodes])
+testing_barcode_feature_matrix <- SCT_barcode_feature_matrix[indexes_of_testing_barcodes,variable_features[1:1000]]
 dim(testing_barcode_feature_matrix)
 ```
 
