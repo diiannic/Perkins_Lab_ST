@@ -86,7 +86,7 @@ Partitioning the spots into testing and training data using a random sampling
 set.seed(1998)
 #nrow should be used when looking at the entire data set and no longer restricting to 500 spots
 index <- sample(2,
-                300, #nrow(image_location),
+                nrow(image_location),
                 replace = TRUE,
                 prob = c(0.7, 0.3)) #splits data into testing and training
 
@@ -140,13 +140,21 @@ feature_matrix <- Load10X_Spatial(data.dir = "/Users/colten/Desktop/Perkins_Lab_
                          filter.matrix = TRUE,
                          to.upper = FALSE)
 
-barcode_feature_matrix <- GetAssayData(object = feature_matrix, slot = "counts")
-barcodes <- barcode_feature_matrix@Dimnames[2][[1]]
-features <- barcode_feature_matrix@Dimnames[1][[1]]
+feature_matrix <- SCTransform(feature_matrix, assay = "Spatial", verbose = FALSE)
+
+SCT_barcode_feature_matrix <- t(GetAssayData(object = feature_matrix, slot = "scale.data"))
+
+barcodes <- rownames(SCT_barcode_feature_matrix)
+features <- colnames(SCT_barcode_feature_matrix)
 
 indexes_of_training_barcodes <- match(image_location$barcode[training_indexes], barcodes)
-training_barcode_feature_matrix <- t(barcode_feature_matrix[,indexes_of_training_barcodes])
+training_barcode_feature_matrix <- t(SCT_barcode_feature_matrix[indexes_of_training_barcodes,])
 dim(training_barcode_feature_matrix)
+
+
+indexes_of_testing_barcodes <- match(image_location$barcode[testing_indexes], barcodes)
+testing_barcode_feature_matrix <- t(SCT_barcode_feature_matrix[indexes_of_testing_barcodes,])
+dim(testing_barcode_feature_matrix)
 
 indexes_of_testing_barcodes <- match(image_location$barcode[testing_indexes], barcodes)
 testing_barcode_feature_matrix <- t(barcode_feature_matrix[,indexes_of_testing_barcodes])

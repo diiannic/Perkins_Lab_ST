@@ -86,7 +86,7 @@ Partitioning the spots into testing and training data using a random sampling
 set.seed(1998)
 #nrow should be used when looking at the entire data set and no longer restricting to 500 spots
 index <- sample(2,
-                nrow(image_location),
+                100,#nrow(image_location),
                 replace = TRUE,
                 prob = c(0.7, 0.3)) #splits data into testing and training
 
@@ -103,7 +103,7 @@ for (i in training_indexes) #This for loop takes about an hour and a half when r
   #Manipulate colors??
   #plotRGB(cropped_img) 
   cropped_img <- as.array(cropped_img)
-  training_data[index_count,] <- as.array(as.vector(cropped_img[,,1]))
+  training_data[index_count,] <- as.array(as.vector(cropped_img[,,1])) - 127.5
   setTxtProgressBar(pb, index_count)
   index_count <- index_count + 1
 }
@@ -123,7 +123,7 @@ for (i in testing_indexes) #This for loop takes about 40 mins when run on all sp
                            image_location$pxl_col_in_fullres_yValue[i])
   #plotRGB(cropped_img)
   cropped_img <- as.array(cropped_img)
-  testing_data[index_count,] <- as.array(as.vector(cropped_img[,,1]))
+  testing_data[index_count,] <- as.array(as.vector(cropped_img[,,1])) - 127.5
   setTxtProgressBar(pb, index_count)
   index_count <- index_count + 1
 }
@@ -163,35 +163,41 @@ NN testing
 ```{r}
 # define and compile model
 # expected input data shape: (batch_size, timesteps, data_dim)
-model <- keras_model_sequential() 
 model <- keras_model_sequential() %>%   
-  layer_dense(units = 64, activation = "relu", input_shape = ncol(training_data)) %>%
-  layer_dropout(rate = 0.5) %>% 
-  layer_dense(units = 64, activation = "relu") %>%
-  layer_dropout(rate = 0.5) %>% 
-  layer_dense(units = ncol(training_barcode_feature_matrix), activation = "softmax")
+  layer_dense(units = 5000, input_shape = ncol(training_data)) %>%
+  layer_activation_leaky_relu() %>%
+  #layer_dropout(rate = 0.1) %>% 
+  layer_dense(units = 5000) %>%
+  layer_activation_leaky_relu() %>%
+  #layer_dropout(rate = 0.1) %>%
+  #layer_dense(units = 1000)%>%
+  #layer_activation_leaky_relu() %>%
+  layer_dense(units = ncol(training_barcode_feature_matrix), activation = "relu")
 
 summary(model)
 
-compile(model, loss = 'categorical_crossentropy', optimizer = optimizer_rmsprop(), metrics = "accuracy")
+compile(model, loss = 'mae', optimizer = 'adam', metrics = "mse")
+k_set_value(model$optimizer$lr, 1e-6)
 
-# generate dummy training data
-# x_train <- array(runif(1000 * timesteps * data_dim), dim = c(1000, timesteps, data_dim))
-# y_train <- matrix(runif(1000 * num_classes), nrow = 1000, ncol = num_classes)
-# dim(y_train)
-# # generate dummy validation data
-# x_val <- array(runif(100 * timesteps * data_dim), dim = c(100, timesteps, data_dim))
-# y_val <- matrix(runif(100 * num_classes), nrow = 100, ncol = num_classes)
+training_actual <- log(as.matrix(training_barcode_feature_matrix) + 1)
+colnames(training_actual) <- NULL
+rownames(training_actual) <- NULL
+testing_actual <- log(as.matrix(testing_barcode_feature_matrix) + 1)
+colnames(testing_actual) <- NULL
+rownames(testing_actual) <- NULL
 
 # train
 model %>% fit( 
-  training_data, training_barcode_feature_matrix, batch_size = 64, epochs = 10
+  training_data[1:5,], training_actual[1:5,], validation_split = 0.1, batch_size = 1, epochs = 20
 )
 
 #test
-score = model %>% evaluate(testing_data, testing_barcode_feature_matrix, batch_size=32)
-
+#score = model %>% evaluate(testing_data, testing_barcode_feature_matrix, batch_size=32)
+s
 #show predictions
-features <- model %>% predict(testing_data)
+predictions <- model %>% predict(training_data[1:4,])
+colnames(predictions) <- features
+predictions[predictions != 0]
+training_actual[1:5,][training_actual[1:4,]!=0]
 ```
 
