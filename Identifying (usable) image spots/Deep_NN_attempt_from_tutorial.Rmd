@@ -144,7 +144,8 @@ dim(testing_barcode_feature_matrix)
 # Normalize
 #mean and sd from training only
 m <- colMeans(training_data)
-#divide ssample into 2
+
+#divide sample into 2
 s <- apply(training_data, 2, sd)
 training_data <- scale(training_data, center = m, scale = s)
 testing_data <- scale(testing_data, center = m, scale = s)
