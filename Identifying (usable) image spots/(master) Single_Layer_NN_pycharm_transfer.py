@@ -1,10 +1,29 @@
 #INSTALL PACKAGES
-!pip install scanpy
-!pip install --editable .
-!pip install anndata2ri
+pip install scanpy
+pip install anndata2ri
+pip install numpy
 
+#Import packages
+#Load spot location csv
+import pandas as pd
+
+#Load barcode feature matrix
+import scanpy as sc
+from scipy.sparse import issparse
+import numpy as np
+import string
+import random
+
+#Load in spot images
+import PIL
+from PIL import Image
+import matplotlib.pyplot as plt
+
+#NN
+import tensorflow.compat.v2 as tf
+import tensorflow_datasets as tfds
 #LOAD SPOT LOCATION
-spot_locations = pd.read_csv("drive/Shared drives/Perkins_Lab_ST/data/spatial/tissue_positions_list.csv", header=None, names = ["barcode", "in_tissue", "array_row", "array_col", "pxl_col_in_fullres_yValue", "pxl_row_in_fullres_xValue"])
+spot_locations = pd.read_csv("C:/Users/malih/Desktop/Perkins_Lab_ST/data/spatial/tissue_positions_list.csv", header=None, names = ["barcode", "in_tissue", "array_row", "array_col", "pxl_col_in_fullres_yValue", "pxl_row_in_fullres_xValue"])
 spot_locations = spot_locations[spot_locations['in_tissue']==1]
 spot_locations.reset_index(drop=True, inplace=True)
 
