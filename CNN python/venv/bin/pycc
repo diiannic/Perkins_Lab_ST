@@ -1,0 +1,3 @@
+#!/Users/colten/Desktop/Perkins_Lab_ST/CNN python/venv/bin/python
+from numba.pycc import main
+main()
