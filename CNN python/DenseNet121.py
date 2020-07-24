@@ -65,7 +65,7 @@ def load_bfm(dir, count_file, spot_locations, number_of_genes_to_predict):
     barcodes = list(barcode_feature_matrix.index.values)
     sorted_barcodes = barcodes
     sorted_barcodes.sort()
-    print(2)
+
     if barcodes == sorted_barcodes:
       spot_locations.index = spot_locations["barcode"]
       spot_locations.sort_index(inplace = True)
@@ -78,6 +78,63 @@ def load_bfm(dir, count_file, spot_locations, number_of_genes_to_predict):
       print("something's wrong. The barcodes from the barcode feature matrix are not in the correct order")
 
     return barcode_feature_matrix, spot_locations
+
+
+    # defining a function to get a cropped spot image given the x and y coordinates of the center of the spot
+def Crop_Spot(img_array, x, y, cropped_img_width):
+    cropped_img = img_array[int(y - (cropped_img_width / 2)):int(y + (cropped_img_width / 2)),
+                  int(x - (cropped_img_width / 2)):int(x + (cropped_img_width / 2))]
+
+    return cropped_img
+
+
+def generate_train_test_indexes(number_of_samples_to_use, number_of_spots):
+    # partition data indexes into train and test
+    train_test_indexes = [i for i in range(number_of_spots)]
+    random.shuffle(train_test_indexes)
+    # train_test_indexes = train_test_indexes[:number_of_samples_to_use]
+    train_indexes = train_test_indexes[:int(0.7 * len(train_test_indexes))]
+    train_indexes.sort()
+    test_indexes = train_test_indexes[int(0.7 * len(train_test_indexes)):]
+    test_indexes.sort()
+    for i in train_indexes:
+        if i in test_indexes:
+            print("something went wrong. training and testing indexes overlap")
+    return train_indexes, test_indexes
+
+
+def get_cropped_images(img_path, spot_locations, cropped_img_width, train_indexes, test_indexes):
+    wsi_file_name = img_path
+    wsi = Image.open(wsi_file_name)
+    img_array = np.array(wsi)
+    print("shape of wsi: ", img_array.shape)
+
+    # crop image into train and test
+    training_cropped_img_list = []
+    for i in train_indexes:
+        cropped_img = Crop_Spot(img_array, spot_locations["pxl_row_in_fullres_xValue"][i],
+                                spot_locations["pxl_col_in_fullres_yValue"][i],
+                                cropped_img_width)
+        training_cropped_img_list.append(cropped_img)
+    training_cropped_img_list = np.array(training_cropped_img_list)
+    # training_cropped_img_list = (training_cropped_img_list - [training_cropped_img_list[:, :, :, 0].mean(), training_cropped_img_list[:, :, :, 1].mean(), training_cropped_img_list[:, :, :, 2].mean()])
+
+    testing_cropped_img_list = []
+    for i in test_indexes:
+        cropped_img = Crop_Spot(img_array, spot_locations["pxl_row_in_fullres_xValue"][i],
+                                spot_locations["pxl_col_in_fullres_yValue"][i],
+                                cropped_img_width)
+        testing_cropped_img_list.append(cropped_img)
+    testing_cropped_img_list = np.array(testing_cropped_img_list)
+    # testing_cropped_img_list = (testing_cropped_img_list - [training_cropped_img_list[:, :, :, 0].mean(), training_cropped_img_list[:, :, :, 1].mean(), training_cropped_img_list[:, :, :, 2].mean()])
+    return training_cropped_img_list, testing_cropped_img_list
+
+
+def partition_bfm(bfm, train_indexes, test_indexes):
+    bfm = bfm.to_numpy()
+    training_bfm = bfm[train_indexes]
+    testing_bfm = bfm[test_indexes]
+    return training_bfm, testing_bfm
 
 
 def find_pove(bfm, predictions, number_of_samples, number_of_genes):
@@ -94,13 +151,27 @@ def find_pove(bfm, predictions, number_of_samples, number_of_genes):
 
 
 def main():
+    PIL.Image.MAX_IMAGE_PIXELS = 1000000000
     np.random.seed(1998)
+
     cropped_img_width = 224
     number_of_genes_to_predict = 100
     number_of_samples_to_use = 1000  # 2938
-    spot_locations = get_spot_locations("/Users/colten/Desktop/Perkins_Lab_ST/Identifying (usable) image spots/data/spatial/tissue_positions_list.csv")
-    bfm, spot_locations = load_bfm("/Users/colten/Desktop/Perkins_Lab_ST/Identifying (usable) image spots/data", 'V1_Breast_Cancer_Block_A_Section_1_filtered_feature_bc_matrix.h5', spot_locations, number_of_genes_to_predict)
+    train_indexes, test_indexes = generate_train_test_indexes(number_of_samples_to_use, number_of_samples_to_use)
+    spot_location_path = "/Users/colten/Desktop/Perkins_Lab_ST/Identifying (usable) image spots/data/spatial/tissue_positions_list.csv"
+    bfm_dir = "/Users/colten/Desktop/Perkins_Lab_ST/Identifying (usable) image spots/data"
+    bfm_filename = 'V1_Breast_Cancer_Block_A_Section_1_filtered_feature_bc_matrix.h5'
+    image_path = '/Users/colten/Desktop/Perkins_Lab_ST/Identifying (usable) image spots/data/V1_Breast_Cancer_Block_A_Section_1_image.tif'
 
+    spot_locations = get_spot_locations(spot_location_path)
+    bfm, spot_locations = load_bfm(bfm_dir, bfm_filename, spot_locations, number_of_genes_to_predict)
+    training_cropped_img_list, testing_cropped_img_list = get_cropped_images(image_path,
+                                                                             spot_locations,
+                                                                             cropped_img_width,
+                                                                             train_indexes,
+                                                                             test_indexes)
+    training_bfm, testing_bfm = partition_bfm(bfm, train_indexes, test_indexes)
+    print("made it to end")
 
 
 if __name__ == "__main__":
