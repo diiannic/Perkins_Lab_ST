@@ -6,6 +6,7 @@ pip install anndata2ri
 pip install tensorflow_datasets
 '''
 
+# Getting file paths
 import os
 
 # Load spot location csv
@@ -31,6 +32,16 @@ from keras.models import Model
 
 # saving model
 from datetime import datetime
+
+
+def get_file_path_by_substring(substring, base_path):
+    file = list(filter(lambda x: substring in x, os.listdir(base_path)))
+    if len(file) != 1:
+        print("there are too many bfm files when looking in " + base_path)
+        quit()
+    file = file[0]
+
+    return file
 
 
 def get_spot_locations(tissue_pos_path):
@@ -67,15 +78,15 @@ def load_bfm(dir, count_file, spot_locations, number_of_genes_to_predict):
     sorted_barcodes.sort()
 
     if barcodes == sorted_barcodes:
-      spot_locations.index = spot_locations["barcode"]
-      spot_locations.sort_index(inplace = True)
-      for i in spot_locations.index:
-        if i in barcodes:
-          continue
-        else:
-          spot_locations.drop([i], axis = 0, inplace = True)#inplace = True, overwrite the current dataframe when set to true, not creating a new variable here (False)
+        spot_locations.index = spot_locations["barcode"]
+        spot_locations.sort_index(inplace=True)
+        for i in spot_locations.index:
+            if i in barcodes:
+                continue
+            else:
+                spot_locations.drop([i], axis=0, inplace=True)
     else:
-      print("something's wrong. The barcodes from the barcode feature matrix are not in the correct order")
+      print("something's wrong. The bar codes from the barcode feature matrix are not in the correct order")
 
     return barcode_feature_matrix, spot_locations
 
@@ -138,16 +149,16 @@ def partition_bfm(bfm, train_indexes, test_indexes):
 
 
 def find_pove(bfm, predictions, number_of_samples, number_of_genes):
-  totalPOVE = []
-  for index in range(number_of_genes): #for every gene we predict
-    actual_data_vairance = bfm[:number_of_samples, index].var() #TV
-    residuals = bfm[:number_of_samples, index] - predictions[:number_of_samples, index]
-    residuals_variance = residuals.var() #RV
-    explained_variance = actual_data_vairance - residuals_variance #EV
-    if actual_data_vairance != 0:
-      POVE = 100*(explained_variance) / actual_data_vairance
-      totalPOVE.append(POVE)
-  return sum(totalPOVE)/len(totalPOVE)
+    totalPOVE = []
+    for index in range(number_of_genes): #for every gene we predict
+        actual_data_vairance = bfm[:number_of_samples, index].var() #TV
+        residuals = bfm[:number_of_samples, index] - predictions[:number_of_samples, index]
+        residuals_variance = residuals.var() #RV
+        explained_variance = actual_data_vairance - residuals_variance #EV
+        if actual_data_vairance != 0:
+           POVE = 100*(explained_variance) / actual_data_vairance
+           totalPOVE.append(POVE)
+    return sum(totalPOVE)/len(totalPOVE)
 
 
 def main():
@@ -158,11 +169,16 @@ def main():
     number_of_genes_to_predict = 100
     number_of_samples_to_use = 1000  # 2938
     train_indexes, test_indexes = generate_train_test_indexes(number_of_samples_to_use, number_of_samples_to_use)
-    spot_location_path = "/Users/colten/Desktop/Perkins_Lab_ST/Identifying (usable) image spots/data/spatial/tissue_positions_list.csv"
-    bfm_dir = "/Users/colten/Desktop/Perkins_Lab_ST/Identifying (usable) image spots/data"
-    bfm_filename = 'V1_Breast_Cancer_Block_A_Section_1_filtered_feature_bc_matrix.h5'
-    image_path = '/Users/colten/Desktop/Perkins_Lab_ST/Identifying (usable) image spots/data/V1_Breast_Cancer_Block_A_Section_1_image.tif'
 
+    base_path = "/Users/colten/Desktop/Perkins_Lab_ST/Identifying (usable) image spots/data"
+
+    # setting file paths
+    spot_location_path = base_path + "/spatial/" + get_file_path_by_substring("tissue_positions_list.csv", base_path + "/spatial")
+    bfm_dir = base_path
+    bfm_filename = get_file_path_by_substring("filtered_feature_bc_matrix.h5", base_path)
+    image_path = base_path + "/" + get_file_path_by_substring("image.tif", base_path)
+
+    # loading data
     spot_locations = get_spot_locations(spot_location_path)
     bfm, spot_locations = load_bfm(bfm_dir, bfm_filename, spot_locations, number_of_genes_to_predict)
     training_cropped_img_list, testing_cropped_img_list = get_cropped_images(image_path,
@@ -171,6 +187,8 @@ def main():
                                                                              train_indexes,
                                                                              test_indexes)
     training_bfm, testing_bfm = partition_bfm(bfm, train_indexes, test_indexes)
+
+    # Neural Network
     print("made it to end")
 
 
