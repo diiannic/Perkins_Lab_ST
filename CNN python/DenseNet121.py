@@ -171,6 +171,13 @@ def main():
     train_indexes, test_indexes = generate_train_test_indexes(number_of_samples_to_use, number_of_samples_to_use)
 
     base_path = "/Users/colten/Desktop/Perkins_Lab_ST/Identifying (usable) image spots/data"
+    #USE CURRENT WORKING DIRECTORY AS THE FIRST PART OF BASE_PATH
+    cwd = str(os.getcwd())
+    file = list(filter(lambda x: "ST_" in x, os.listdir(cwd)))
+    if len(file) >= 1:
+        print("Importing data from " + str(len(file)) + " datasets")
+    quit()
+    file = file[0]
 
     # setting file paths
     spot_location_path = base_path + "/spatial/" + get_file_path_by_substring("tissue_positions_list.csv", base_path + "/spatial")

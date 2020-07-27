@@ -9,3 +9,9 @@ Identifying (usable) image spots/single_layer_NN.Rmd
 Identifying (usable) image spots/linear_regression.Rmd
 Identifying (usable) image spots/single_layer_NN.Rmd
 CNN python/venv/lib/python3.7/site-packages/tensorflow/python/_pywrap_tensorflow_internal.so
+CNN python/ST_HBC_A1/V1_Breast_Cancer_Block_A_Section_1_image.tif
+CNN python/ST_HBC_A1/V1_Breast_Cancer_Block_A_Section_1_molecule_info.h5
+CNN python/ST_HBC_A2/V1_Breast_Cancer_Block_A_Section_2_image.tif
+CNN python/ST_HBC_A2/V1_Breast_Cancer_Block_A_Section_2_molecule_info.h5
+CNN python/ST_HBC_A1/V1_Breast_Cancer_Block_A_Section_1_cloupe.cloupe
+CNN python/ST_HBC_A2/V1_Breast_Cancer_Block_A_Section_2_cloupe.cloupe
