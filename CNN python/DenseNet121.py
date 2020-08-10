@@ -34,6 +34,8 @@ import tensorflow as tf
 # saving model
 # from datetime import datetime
 
+print("imported everything successfully!")
+quit()
 
 def get_file_path_by_substring(substring, base_path):
     file = list(filter(lambda x: substring in x, os.listdir(base_path)))

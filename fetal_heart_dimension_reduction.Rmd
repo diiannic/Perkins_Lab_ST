@@ -1,0 +1,51 @@
+---
+title: "seurat"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(Seurat)
+#library(tidyverse)
+```
+
+```{r}
+matrix <- read.table(file = "~/Desktop/exprMat_all_weeks_raw.tsv", sep = '\t', header = TRUE, row.names = 1)
+
+dim(matrix)
+
+# Take all genes in > 3 cells, all cells with > 1k genes, use an expression threshold of 1
+# Cell type is encoded in the second _ field, will be stored in nbt@ident and also placed in the "orig.ident" field of object@data.info
+s_obj <- CreateSeuratObject(matrix, min.cells = 3, min.features  = 200, assay = "RNA")
+
+VlnPlot(s_obj, features = c("nFeature_RNA", "nCount_RNA"), ncol = 2)
+
+s_obj <- NormalizeData(s_obj, normalization.method = "LogNormalize", scale.factor = 10000)
+
+s_obj <- FindVariableFeatures(s_obj, selection.method = "vst", nfeatures = 2000)
+
+all.genes <- rownames(s_obj)
+s_obj <- ScaleData(s_obj, features = all.genes)
+
+
+week_4_samples <- 248
+week_6_samples <- 1785 - 248
+week_9_samples <- 3174 - 1785
+clusters <- c(rep(1, week_4_samples), rep(2, week_6_samples), rep(3, week_9_samples))
+df <- as.data.frame(clusters)
+rownames(df) <- colnames(matrix)
+s_obj <- AddMetaData(s_obj, df, col.name = "week_number")
+
+
+
+s_obj <- RunPCA(s_obj, features = VariableFeatures(object = s_obj))
+
+DimPlot(s_obj, reduction = "pca")
+
+s_obj <- RunUMAP(s_obj, dims = 1:10)
+DimPlot(s_obj, reduction = "umap",  group.by = "week_number")
+
+s_obj <- RunTSNE(object = s_obj)
+DimPlot(object = s_obj, reduction = "tsne", group.by = "week_number")
+s_obj@meta.data
+```
