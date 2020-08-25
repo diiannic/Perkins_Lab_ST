@@ -1,0 +1,49 @@
+---
+title: "seurat"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(Seurat)
+#library(tidyverse)
+```
+
+```{r}
+matrix <- read.delim(file = "C:/Users/malih/Desktop/Fetal Heart Data/exprMat_all_weeks_raw.txt", sep = '\t', header = TRUE, row.names = 1, stringsAsFactors = F)
+
+View(matrix)
+
+avector <- row.names(matrix)
+
+#convert vector to a character vector 
+ensemble.genes <- avector
+
+library(biomaRt)
+
+#unlist converts a list to vector
+get_gene_symbol<- function(gene) {
+  split_gene = unlist(strsplit(gene,"[.]"))[1]
+  return(split_gene)
+}
+
+ensemble.genes <- unlist(lapply(ensemble.genes, get_gene_symbol))
+rownames(matrix) <- ensemble.genes
+
+mart <- useMart(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
+results <- getBM(attributes = c("ensembl_gene_id", "ensembl_transcript_id", "external_gene_name", "description", "gene_biotype"), filters = "ensembl_gene_id", values = ensemble.genes, mart = mart)
+
+library(tidyverse)
+mitochondrial <-results%>%filter(stringr::str_detect(gene_biotype, "Mt_"))
+View(mitochondrial)
+
+`%notin%` <- Negate(`%in%`)
+results <- subset(matrix, rownames(matrix) %notin% mitochondrial$ensembl_gene_id)
+
+#names(results)-> as.character(results)
+
+write.table(results, file = "C:/Users/malih/Desktop/exprMat_all_weeks_raw_filtered(1).tsv", sep ='\t', col.names = TRUE, row.names = TRUE)
+
+
+```
+
