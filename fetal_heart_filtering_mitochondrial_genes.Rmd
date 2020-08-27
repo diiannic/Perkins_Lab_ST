@@ -39,11 +39,43 @@ View(mitochondrial)
 
 `%notin%` <- Negate(`%in%`)
 results <- subset(matrix, rownames(matrix) %notin% mitochondrial$ensembl_gene_id)
+View(results)
 
 #names(results)-> as.character(results)
 
 write.table(results, file = "C:/Users/malih/Desktop/exprMat_all_weeks_raw_filtered(1).tsv", sep ='\t', col.names = TRUE, row.names = TRUE)
 
+
+```
+
+```{r}
+matrix_mob <- read.delim(file = "C:/Users/malih/Desktop/MOB_Data/Rep1_MOB_count_matrix-1.tsv", sep = '\t', header = TRUE, row.names = 1, stringsAsFactors = F)
+
+View(matrix)
+
+avector <- colnames(matrix_mob)
+genes_mob <- avector
+
+View(ensemble.genes_mob)
+library(biomaRt)
+
+#get_gene_symbol<- function(gene) {
+  #split_gene = unlist(strsplit(gene,"[.]"))[1]
+  #return(split_gene)
+#}
+
+genes_mob <- unlist(lapply(genes_mob, get_gene_symbol))
+colnames(matrix_mob) <- ensemble.genes_mob
+
+mart <- useMart(biomart = "ensembl", dataset = "mmusculus_gene_ensembl")
+results_mob <- getBM(attributes = c("ensembl_gene_id", "ensembl_transcript_id", "external_gene_name", "description", "gene_biotype"), filters = "external_gene_name", values = ensemble.genes_mob, mart = mart)
+
+library(tidyverse)
+mitochondrial <-results%>%filter(stringr::str_detect(gene_biotype, "Mt_"))
+View(mitochondrial)
+
+`%notin%` <- Negate(`%in%`)
+results <- subset(matrix, rownames(matrix) %notin% mitochondrial$ensembl_gene_id)
 
 ```
 
